@@ -1,0 +1,84 @@
+import heapq
+
+# Define a class to represent the state of the pitchers
+class PitcherState:
+    def __init__(self, state, steps):
+        self.state = state  # a list of integers representing the current water levels in the pitchers
+        self.steps = steps  # the number of steps taken to reach this state
+
+    def __lt__(self, other):
+        # Define the less than operator for this class
+        return self.steps < other.steps
+
+    def __eq__(self, other):
+        # Define the equal operator for this class
+        return self.state == other.state
+
+    def __hash__(self):
+        # Define the hash function for this class
+        return hash(tuple(self.state))
+
+# Define a function to generate all possible next states given the current state
+def generate_next_states(state, capacities):
+    next_states = []
+    for i in range(len(state)):
+        for j in range(len(state)):
+            if i != j:
+                # Transfer water from pitcher i to pitcher j
+                amount = min(state[i], capacities[j] - state[j])
+                next_state = state.copy()
+                next_state[i] -= amount
+                next_state[j] += amount
+                next_states.append(PitcherState(next_state, state.steps + 1))
+    return next_states
+
+# Define the heuristic function for this problem
+def heuristic(state, target):
+    # Calculate the maximum difference between the current water levels and the target quantity
+    return max([abs(state[i] - target) for i in range(len(state))])
+
+# Define the lower bound function for this problem
+def lower_bound(state, target):
+    # Calculate the lower bound as the sum of the current water levels minus the target quantity,
+    # divided by the maximum capacity of any pitcher
+    return (sum(state) - target) // max(capacities)
+
+# Read the input file
+with open('input.txt', 'r') as f:
+    capacities = [int(x) for x in f.readline().strip().split(',')]
+    target = int(f.readline().strip())
+
+# Create the initial state
+initial_state = PitcherState([0] * len(capacities), 0)
+
+# Create the priority queue for the open list
+open_list = [initial_state]
+
+# Create the set for the closed list
+closed_list = set()
+
+# Loop until the open list is empty
+while len(open_list) > 0:
+    # Pop the state with the lowest f value from the open list
+    current_state = heapq.heappop(open_list)
+
+    # Check if we have reached the target state
+    if max(current_state.state) == target:
+        print(current_state.steps)
+        break
+
+    # Add the current state to the closed list
+    closed_list.add(current_state)
+
+    # Generate all possible next states
+    next_states = generate_next_states(current_state.state, capacities)
+
+    # Add the next states to the open list if they have not been visited
+    for next_state in next_states:
+        if next_state not in closed_list:
+            next_state.steps += heuristic(next_state.state, target) + lower_bound(next_state.state, target)
+            heapq.heappush(open_list, next_state)
+
+# If no path was found, print -1
+if max(current_state.state) != target:
+    print(-1)
